@@ -47,7 +47,7 @@ class Http
         if ($responseCode === 200 || $responseCode === 201 || $responseCode === 422 || $responseCode == 400) {
             return Xml::buildArrayFromXml($response['body']);
         } else {
-            Util::throwStatusCodeException($responseCode);
+            Util::throwStatusCodeException($responseCode, $response['body']);
         }
     }
 
@@ -124,6 +124,10 @@ class Http
         curl_setopt($curl, CURLOPT_TIMEOUT, $this->_config->timeout());
         curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $httpVerb);
         curl_setopt($curl, CURLOPT_URL, $url);
+        curl_setopt($curl, CURLINFO_HEADER_OUT, true);
+
+        curl_setopt($curl, CURLOPT_VERBOSE, true);
+        curl_setopt($curl, CURLOPT_STDERR, fopen('php://stderr', 'w'));
 
         if ($this->_config->acceptGzipEncoding()) {
             curl_setopt($curl, CURLOPT_ENCODING, 'gzip');
@@ -181,6 +185,7 @@ class Http
 
         curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+
         $response = curl_exec($curl);
         $httpStatus = curl_getinfo($curl, CURLINFO_HTTP_CODE);
         $error_code = curl_errno($curl);
@@ -198,6 +203,8 @@ class Http
         } else if ($error_code) {
             throw new Exception\Connection($error, $error_code);
         }
+
+        error_log("request_body $requestBody");
 
         return ['status' => $httpStatus, 'body' => $response];
     }
